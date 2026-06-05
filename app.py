@@ -5,7 +5,6 @@ from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
 
-# Usamos la carpeta /tmp de Render que permite lectura y escritura libre
 OUTPUT_FOLDER = '/tmp/converted'
 os.makedirs(OUTPUT_FOLDER, exist_ok=True)
 
@@ -32,7 +31,7 @@ def upload_file():
         try:
             output_pdf_path = os.path.join(OUTPUT_FOLDER, base_name + '.pdf')
             
-            # Conversión nativa directa. No usa comandos externos, es ultra ligera.
+            # Conversión nativa directa con la librería ya instalada en el sistema
             convert(input_word_path, output_pdf_path)
             
             if os.path.exists(input_word_path):
