@@ -1,11 +1,13 @@
 from flask import Flask, render_template, request, send_file, jsonify
 import os
-import mammoth
-from xhtml2pdf import pisa
+from docx import Document
+from reportlab.lib.pagesizes import letter
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib import colors
 from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
-
 OUTPUT_FOLDER = '/tmp/converted'
 os.makedirs(OUTPUT_FOLDER, exist_ok=True)
 
@@ -32,70 +34,41 @@ def upload_file():
         try:
             output_pdf_path = os.path.join(OUTPUT_FOLDER, base_name + '.pdf')
             
-            # Mammoth extrae de forma nativa tablas, textos, estilos e imágenes integradas del Word
-            with open(input_word_path, "rb") as docx_file:
-                result = mammoth.convert_to_html(docx_file)
-                html_content = result.value  # Aquí ya viene la estructura con tus fotos en Base64
+            # Reconstrucción ligera del documento usando ReportLab (A prueba de fallos de RAM)
+            doc = Document(input_word_path)
+            pdf = SimpleDocTemplate(output_pdf_path, pagesize=letter, rightMargin=40, leftMargin=40, topMargin=40, bottomMargin=40)
             
-            # Le aplicamos una plantilla de estilos profesionales para respetar el diseño de Word
-            full_html = f"""
-            <html>
-            <head>
-                <meta charset="utf-8">
-                <style>
-                    @page {{
-                        size: letter;
-                        margin: 1.5cm;
-                        @bottom-right {{
-                            content: counter(page);
-                            font-size: 9pt;
-                        }}
-                    }}
-                    body {{
-                        font-family: 'Helvetica', 'Arial', sans-serif;
-                        color: #222222;
-                        line-height: 1.6;
-                        font-size: 11pt;
-                    }}
-                    h1, h2, h3 {{ color: #111111; margin-top: 14pt; margin-bottom: 6pt; font-weight: bold; }}
-                    p {{ margin-bottom: 10pt; text-align: justify; }}
-                    table {{
-                        width: 100%;
-                        border-collapse: collapse;
-                        margin-top: 12pt;
-                        margin-bottom: 12pt;
-                    }}
-                    table, th, td {{
-                        border: 1px solid #cccccc;
-                    }}
-                    th, td {{
-                        padding: 8px;
-                        text-align: left;
-                    }}
-                    th {{ background-color: #f5f5f5; }}
-                    ul, ol {{ margin-left: 20pt; margin-bottom: 10pt; }}
-                    li {{ margin-bottom: 4pt; }}
-                    img {{
-                        max-width: 100%;
-                        height: auto;
-                        display: block;
-                        margin: 12pt auto;
-                    }}
-                </style>
-            </head>
-            <body>
-                {html_content}
-            </body>
-            </html>
-            """
+            styles = getSampleStyleSheet()
+            style_normal = styles['Normal']
+            style_normal.alignment = 4 # Texto Justificado
             
-            # Convertimos el HTML estructurado a un PDF real directamente en la memoria de Python
-            with open(output_pdf_path, "wb") as pdf_file:
-                pisa_status = pisa.CreatePDF(full_html, dest=pdf_file)
+            story = []
             
-            if pisa_status.err:
-                raise Exception("El procesador interno no pudo estructurar el diseño.")
-
+            # 1. Procesar Párrafos y Textos
+            for paragraph in doc.paragraphs:
+                if paragraph.text.strip():
+                    text = paragraph.text.encode('latin-1', 'replace').decode('latin-1')
+                    story.append(Paragraph(text, style_normal))
+                    story.append(Spacer(1, 8))
+            
+            # 2. Extractor seguro de imágenes integradas en el Word
+            try:
+                for rel in doc.part.relations.values():
+                    if "image" in rel.target_ref:
+                        img_data = rel.target_part.blob
+                        img_name = os.path.basename(rel.target_ref)
+                        temp_img_path = os.path.join(OUTPUT_FOLDER, img_name)
+                        with open(temp_img_path, "wb") as f:
+                            f.write(img_data)
+                        
+                        story.append(Image(temp_img_path, width=250, height=180))
+                        story.append(Spacer(1, 10))
+            except:
+                pass # Si una imagen tiene error, continúa para que la web no se caiga
+                
+            # 3. Compilar el PDF final en varias páginas dinámicas
+            pdf.build(story)
+            
             if os.path.exists(input_word_path):
                 os.remove(input_word_path)
                 
@@ -104,7 +77,7 @@ def upload_file():
         except Exception as e:
             if os.path.exists(input_word_path):
                 os.remove(input_word_path)
-            return jsonify({'error': f'Error en el procesador interno: {str(e)}'}), 500
+            return jsonify({'error': f'Error de procesamiento ligero: {str(e)}'}), 500
             
     return jsonify({'error': 'Formato no permitido'}), 400
 
