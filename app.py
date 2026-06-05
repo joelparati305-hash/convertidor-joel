@@ -1,11 +1,12 @@
 from flask import Flask, render_template, request, send_file, jsonify
 import os
-from docx import Document
-from fpdf import FPDF
+import subprocess
 from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
-OUTPUT_FOLDER = 'converted'
+
+# Usamos la carpeta tmp que es donde Render nos deja escribir sin problemas
+OUTPUT_FOLDER = '/tmp/converted'
 os.makedirs(OUTPUT_FOLDER, exist_ok=True)
 
 @app.route('/')
@@ -15,30 +16,49 @@ def index():
 @app.route('/upload', methods=['POST'])
 def upload_file():
     if 'file' not in request.files:
-        return jsonify({'error': 'No file'}), 400
+        return jsonify({'error': 'No se seleccionó ningún archivo'}), 400
+    
     file = request.files['file']
-    filename = secure_filename(file.filename)
-    input_path = os.path.join(OUTPUT_FOLDER, filename)
-    file.save(input_path)
-    try:
-        pdf_filename = filename.rsplit('.', 1)[0] + '.pdf'
-        pdf_path = os.path.join(OUTPUT_FOLDER, pdf_filename)
+    if file.filename == '':
+        return jsonify({'error': 'Nombre de archivo vacío'}), 400
+
+    if file and (file.filename.endswith('.docx') or file.filename.endswith('.doc')):
+        # Guardamos el nombre seguro del archivo
+        filename = secure_filename(file.filename)
+        base_name = filename.rsplit('.', 1)[0]
         
-        doc = Document(input_path)
-        pdf = FPDF()
-        pdf.add_page()
-        pdf.set_font("Arial", size=12)
+        input_word_path = os.path.join(OUTPUT_FOLDER, filename)
+        file.save(input_word_path)
         
-        for para in doc.paragraphs:
-            # Codificación para evitar errores de caracteres especiales
-            text = para.text.encode('latin-1', 'replace').decode('latin-1')
-            pdf.multi_cell(0, 10, text)
+        try:
+            # Comando oficial de LibreOffice para convertir a PDF manteniendo formato e imágenes
+            # Usamos '/tmp' para guardar el PDF para evitar problemas de permisos
+            cmd = f"libreoffice --headless --convert-to pdf --outdir {OUTPUT_FOLDER} {input_word_path}"
             
-        pdf.output(pdf_path)
-        if os.path.exists(input_path): os.remove(input_path)
-        return send_file(pdf_path, mimetype='application/pdf')
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
+            # Ejecutamos el comando en el sistema
+            subprocess.run(cmd, shell=True, check=True)
+            
+            pdf_filename = base_name + '.pdf'
+            output_pdf_path = os.path.join(OUTPUT_FOLDER, pdf_filename)
+            
+            # Limpiamos el Word original para no ocupar espacio innecesario
+            if os.path.exists(input_word_path):
+                os.remove(input_word_path)
+                
+            return send_file(output_pdf_path, as_attachment=True, download_name=pdf_filename)
+            
+        except subprocess.CalledProcessError as e:
+            if os.path.exists(input_word_path):
+                os.remove(input_word_path)
+            return jsonify({'error': 'Error interno al convertir con el sistema: ' + str(e)}), 500
+        except Exception as e:
+            if os.path.exists(input_word_path):
+                os.remove(input_word_path)
+            return jsonify({'error': 'Error al procesar el archivo: ' + str(e)}), 500
+            
+    return jsonify({'error': 'Formato no permitido'}), 400
 
 if __name__ == '__main__':
-    app.run()
+    # Usamos el puerto por defecto de Render para que no haya que configurarlo
+    port = int(os.environ.get('PORT', 5000))
+    app.run(host='0.0.0.0', port=port)
