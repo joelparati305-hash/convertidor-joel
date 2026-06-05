@@ -1,13 +1,11 @@
 from flask import Flask, render_template, request, send_file, jsonify
 import os
-from docx import Document
-from reportlab.lib.pagesizes import letter
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image
-from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-from reportlab.lib import colors
+from docx2pdf import convert
 from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
+
+# Usamos la carpeta /tmp de Render que permite lectura y escritura libre
 OUTPUT_FOLDER = '/tmp/converted'
 os.makedirs(OUTPUT_FOLDER, exist_ok=True)
 
@@ -34,40 +32,8 @@ def upload_file():
         try:
             output_pdf_path = os.path.join(OUTPUT_FOLDER, base_name + '.pdf')
             
-            # Reconstrucción ligera del documento usando ReportLab (A prueba de fallos de RAM)
-            doc = Document(input_word_path)
-            pdf = SimpleDocTemplate(output_pdf_path, pagesize=letter, rightMargin=40, leftMargin=40, topMargin=40, bottomMargin=40)
-            
-            styles = getSampleStyleSheet()
-            style_normal = styles['Normal']
-            style_normal.alignment = 4 # Texto Justificado
-            
-            story = []
-            
-            # 1. Procesar Párrafos y Textos
-            for paragraph in doc.paragraphs:
-                if paragraph.text.strip():
-                    text = paragraph.text.encode('latin-1', 'replace').decode('latin-1')
-                    story.append(Paragraph(text, style_normal))
-                    story.append(Spacer(1, 8))
-            
-            # 2. Extractor seguro de imágenes integradas en el Word
-            try:
-                for rel in doc.part.relations.values():
-                    if "image" in rel.target_ref:
-                        img_data = rel.target_part.blob
-                        img_name = os.path.basename(rel.target_ref)
-                        temp_img_path = os.path.join(OUTPUT_FOLDER, img_name)
-                        with open(temp_img_path, "wb") as f:
-                            f.write(img_data)
-                        
-                        story.append(Image(temp_img_path, width=250, height=180))
-                        story.append(Spacer(1, 10))
-            except:
-                pass # Si una imagen tiene error, continúa para que la web no se caiga
-                
-            # 3. Compilar el PDF final en varias páginas dinámicas
-            pdf.build(story)
+            # Conversión nativa directa. No usa comandos externos, es ultra ligera.
+            convert(input_word_path, output_pdf_path)
             
             if os.path.exists(input_word_path):
                 os.remove(input_word_path)
@@ -77,7 +43,7 @@ def upload_file():
         except Exception as e:
             if os.path.exists(input_word_path):
                 os.remove(input_word_path)
-            return jsonify({'error': f'Error de procesamiento ligero: {str(e)}'}), 500
+            return jsonify({'error': f'Error en procesamiento directo: {str(e)}'}), 500
             
     return jsonify({'error': 'Formato no permitido'}), 400
 
