@@ -1,9 +1,7 @@
 from flask import Flask, render_template, request, send_file, jsonify
 import os
-from docx import Document
-from reportlab.lib.pagesizes import letter
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image
-from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+import mammoth
+from xhtml2pdf import pisa
 from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
@@ -31,37 +29,49 @@ def upload_file():
         pdf_filename = filename.rsplit('.', 1)[0] + '.pdf'
         pdf_path = os.path.join(OUTPUT_FOLDER, pdf_filename)
         
-        # Leemos el Word de forma interna
-        doc = Document(input_path)
-        pdf = SimpleDocTemplate(pdf_path, pagesize=letter, rightMargin=40, leftMargin=40, topMargin=40, bottomMargin=40)
-        
-        styles = getSampleStyleSheet()
-        normal_style = styles['Normal']
-        
-        story = []
-        
-        # Procesamos el texto y extraemos las imágenes ocultas si las hay
-        for paragraph in doc.paragraphs:
-            if paragraph.text.strip():
-                story.append(Paragraph(paragraph.text, normal_style))
-                story.append(Spacer(1, 10))
-        
-        # Intentar leer imágenes nativas del Word para meterlas al PDF
-        try:
-            for rel in doc.part.relations.values():
-                if "image" in rel.target_ref:
-                    img_data = rel.target_part.blob
-                    img_name = os.path.basename(rel.target_ref)
-                    temp_img_path = os.path.join(OUTPUT_FOLDER, img_name)
-                    with open(temp_img_path, "wb") as f:
-                        f.write(img_data)
-                    story.append(Image(temp_img_path, width=200, height=150))
-                    story.append(Spacer(1, 12))
-        except:
-            pass # Si no hay imágenes accesibles, continúa con el texto para no romper el flujo
+        # Convertimos el Word completo a HTML estructurado (Mammoth extrae las imágenes automáticamente en Base64)
+        with open(input_path, "rb") as docx_file:
+            result = mammoth.convert_to_html(docx_file)
+            html_content = result.value
             
-        pdf.build(story)
+        # Le aplicamos estilos CSS profesionales para que respete los márgenes y escale bien las fotos
+        full_html = f"""
+        <html>
+        <head>
+            <meta charset="utf-8">
+            <style>
+                @page {{
+                    size: letter;
+                    margin: 2cm;
+                }}
+                body {{
+                    font-family: Arial, sans-serif;
+                    color: #333333;
+                    line-height: 1.5;
+                }}
+                p {{ margin-bottom: 12pt; text-align: justify; }}
+                img {{
+                    max-width: 100%;
+                    height: auto;
+                    display: block;
+                    margin: 15pt auto;
+                }}
+                h1, h2, h3 {{ color: #111111; margin-top: 18pt; margin-bottom: 8pt; }}
+            </style>
+        </head>
+        <body>
+            {html_content}
+        </body>
+        </html>
+        """
         
+        # Generamos el PDF final permitiendo que se creen dinámicamente las páginas que correspondan
+        with open(pdf_path, "wbb") as pdf_file:
+            pisa_status = pisa.CreatePDF(full_html, dest=pdf_file)
+            
+        if pisa_status.err:
+            raise Exception("Error al estructurar las páginas del PDF")
+
         if os.path.exists(input_path):
             os.remove(input_path)
             
