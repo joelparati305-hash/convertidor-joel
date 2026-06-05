@@ -1,4 +1,4 @@
 flask
 gunicorn
-mammoth
-xhtml2pdf
+python-docx
+reportlab
