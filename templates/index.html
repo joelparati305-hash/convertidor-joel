@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Convertidor de Word a PDF</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Arial', sans-serif; }
+        body { background-color: #f4f4f5; color: #333; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+        
+        /* PANTALLA 1: INICIO (ZONA NARANJA) */
+        .view-start { display: flex; flex-direction: column; align-items: center; justify-content: center; flex: 1; padding: 40px 20px; background-color: #fcfcfc; }
+        .view-start h1 { font-size: 32px; color: #222; margin-bottom: 30px; font-weight: bold; }
+        .drop-zone {
+            background-color: #e28743;
+            border: 2px dashed rgba(255, 255, 255, 0.4);
+            border-radius: 8px;
+            padding: 80px 40px;
+            position: relative;
+            min-height: 300px;
+            width: 100%;
+            max-width: 900px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+            transition: background 0.3s;
+        }
+        .drop-zone.dragover { background-color: #d47633; border-color: #fff; }
+        .btn-group { position: relative; display: inline-flex; vertical-align: middle; }
+        .btn-main { background-color: #ffffff; color: #333333; padding: 16px 32px; font-size: 16px; font-weight: bold; border: none; border-radius: 4px 0 0 4px; cursor: pointer; }
+        .btn-split { background-color: #ffffff; border-left: 1px solid #eeeeee; padding: 16px 14px; border-top: none; border-bottom: none; border-right: none; border-radius: 0 4px 4px 0; cursor: pointer; display: flex; align-items: center; }
+        .dropdown-menu { position: absolute; top: 100%; left: 0; width: 100%; background: white; border-radius: 4px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); display: none; z-index: 10; margin-top: 5px; text-align: left; }
+        .dropdown-menu.show { display: block; }
+        .dropdown-item { padding: 12px 16px; color: #444; display: block; font-size: 14px; cursor: pointer; }
+        .dropdown-item:hover { background-color: #f5f5f5; }
+        .info-text { color: white; margin-top: 20px; font-size: 14px; opacity: 0.9; }
+        #fileInput { display: none; }
+
+        /* PANTALLA 2: VISTA DE RESULTADO FINAL */
+        .view-result { display: none; flex: 1; width: 100%; height: 100%; }
+        .view-result.active { display: flex; }
+        
+        /* Zona Central - Fondo Gris Claro de Smallpdf */
+        .preview-area { flex: 1; background-color: #e6e6e9; display: flex; justify-content: center; align-items: center; padding: 40px; overflow-y: auto; }
+        .pdf-document-mock { background: white; width: 100%; max-width: 520px; height: 720px; box-shadow: 0 4px 25px rgba(0,0,0,0.1); padding: 40px; display: block; text-align: left; font-size: 13px; line-height: 1.6; overflow: hidden; }
+
+        /* Barra Lateral Derecha Estilizada */
+        .sidebar-right { width: 350px; background-color: #ffffff; border-left: 1px solid #e4e4e7; display: flex; flex-direction: column; padding: 24px; box-shadow: -2px 0 10px rgba(0,0,0,0.02); }
+        .status-header { display: flex; align-items: center; gap: 8px; font-size: 18px; font-weight: bold; color: #22c55e; margin-bottom: 6px; }
+        .file-info-name { font-size: 13px; color: #71717a; margin-bottom: 24px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        
+        /* Botón de Descargar Azul Fuerte */
+        .btn-download-container { display: flex; margin-bottom: 12px; width: 100%; }
+        .btn-download-main { background-color: #1e40af; color: white; flex: 1; padding: 16px; font-size: 15px; font-weight: bold; border: none; border-radius: 6px 0 0 6px; cursor: pointer; transition: background 0.2s; text-align: center; }
+        .btn-download-main:hover { background-color: #1d4ed8; }
+        .btn-download-arrow { background-color: #1e40af; border-left: 1px solid rgba(255,255,255,0.2); padding: 16px 14px; border-top: none; border-bottom: none; border-right: none; border-radius: 0 6px 6px 0; cursor: pointer; color: white; display: flex; align-items: center; }
+        
+        .btn-export { background-color: transparent; border: 1px solid #e4e4e7; color: #3f3f46; padding: 14px; font-size: 14px; font-weight: 500; border-radius: 6px; width: 100%; cursor: pointer; margin-bottom: 30px; text-align: center; }
+        .btn-export:hover { background-color: #f4f4f5; }
+
+        /* Sección de herramientas inferiores "Continuar en" */
+        .tools-section-title { font-size: 11px; font-weight: bold; color: #71717a; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 12px; text-align: left; }
+        .tool-item { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px; border: 1px solid #f4f4f5; border-radius: 8px; cursor: pointer; transition: background 0.2s; font-size: 14px; color: #18181b; margin-bottom: 8px; background-color: #fafafa; }
+        .tool-item:hover { background-color: #f4f4f5; border-color: #e4e4e7; }
+        .tool-left { display: flex; align-items: center; gap: 12px; }
+        .tool-icon { width: 20px; height: 20px; border-radius: 4px; display: inline-block; }
+        .icon-compress { background-color: #ef4444; }
+        .icon-merge { background-color: #3b82f6; }
+        .icon-edit { background-color: #f59e0b; }
+        .arrow-right { color: #a1a1aa; font-weight: bold; }
+        
+        .btn-restart { margin-top: auto; background: none; border: none; color: #71717a; font-size: 14px; cursor: pointer; text-decoration: none; text-align: center; padding: 10px; }
+        .btn-restart:hover { color: #18181b; text-decoration: underline; }
+        
+        /* Pantalla de carga */
+        .loading-overlay { display: none; position: fixed; top:0; left:0; width:100vw; height:100vh; background: rgba(255,255,255,0.85); z-index: 100; justify-content: center; align-items: center; flex-direction: column; gap: 15px; }
+        .loading-overlay.active { display: flex; }
+        .spinner { width: 45px; height: 45px; border: 4px solid #f3f3f3; border-top: 4px solid #e28743; border-radius: 50%; animation: spin 0.8s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+
+    <div class="view-start" id="viewStart">
+        <h1>Convertidor de Word a PDF</h1>
+        <div class="drop-zone" id="dropZone">
+            <div class="btn-group">
+                <button class="btn-main" onclick="triggerBrowse()">ELEGIR ARCHIVOS</button>
+                <button class="btn-split" onclick="toggleDropdown(event)">
+                    <svg width="12" height="12" viewBox="0 0 12 12"><path d="M2 4l4 4 4-4z" fill="#333"/></svg>
+                </button>
+                <div class="dropdown-menu" id="dropdownMenu">
+                    <div class="dropdown-item" onclick="triggerBrowse()">Desde dispositivo</div>
+                    <div class="dropdown-item">Desde Google Drive</div>
+                    <div class="dropdown-item">Desde Dropbox</div>
+                </div>
+            </div>
+            <p class="info-text">o arrastra y suelta los archivos Word aquí</p>
+            <input type="file" id="fileInput" accept=".doc,.docx" onchange="handleFile(this.files[0])">
+        </div>
+    </div>
+
+    <div class="view-result" id="viewResult">
+        <div class="preview-area">
+            <div class="pdf-document-mock">
+                <p style="font-weight: bold; font-size: 14px; margin-bottom: 15px; color: #111827;" id="mockTitleText">SEGUIR EL ORDEN DE LA INSTALACIÓN QUE SE MENCIONÓ EN CLASE</p>
+                
+                <p style="margin-bottom: 10px;"><a href="#" style="color: #2563eb; text-decoration: underline;">SketchUp Plugins | PluginStore | JHS PowerBar</a></p>
+                
+                <p style="margin-bottom: 8px;"><a href="#" style="color: #2563eb; text-decoration: underline;">https://sketchucation.com/pluginstore?pln=V-Ray_for_SketchUp</a></p>
+                
+                <p style="margin-bottom: 8px;"><a href="#" style="color: #2563eb; text-decoration: underline;">https://sketchucation.com/pluginstore?pln=Curviloft</a></p>
+                
+                <p style="margin-bottom: 8px;"><a href="#" style="color: #2563eb; text-decoration: underline;">https://sketchucation.com/pluginstore?pln=JointPushPull</a></p>
+                
+                <p style="margin-bottom: 8px;"><a href="#" style="color: #2563eb; text-decoration: underline;">https://sketchucation.com/pluginstore?pln=FredoTools</a></p>
+            </div>
+        </div>
+
+        <div class="sidebar-right">
+            <div class="status-header">
+                <span style="font-size: 18px;">✓</span> Listo
+            </div>
+            <div class="file-info-name" id="pdfFileNameLabel">nombre_archivo.pdf</div>
+
+            <div class="btn-download-container">
+                <button class="btn-download-main" id="btnDownloadActual">Descargar</button>
+                <button class="btn-download-arrow">
+                    <svg width="12" height="12" viewBox="0 0 12 12" fill="white"><path d="M2 4l4 4 4-4z"/></svg>
+                </button>
+            </div>
+
+            <button class="btn-export">Exportar como ▾</button>
+
+            <div class="tools-section-title">Continuar en</div>
+            
+            <div class="tool-item">
+                <div class="tool-left">
+                    <div class="tool-icon icon-compress"></div>
+                    <span style="font-weight: 500;">Comprimir</span>
+                </div>
+                <span class="arrow-right">›</span>
+            </div>
+            <div class="tool-item">
+                <div class="tool-left">
+                    <div class="tool-icon icon-merge"></div>
+                    <span style="font-weight: 500;">Combinar</span>
+                </div>
+                <span class="arrow-right">›</span>
+            </div>
+            <div class="tool-item">
+                <div class="tool-left">
+                    <div class="tool-icon icon-edit"></div>
+                    <span style="font-weight: 500;">Editar</span>
+                </div>
+                <span class="arrow-right">›</span>
+            </div>
+
+            <button class="btn-restart" onclick="resetConverter()">⟲ Volver a empezar</button>
+        </div>
+    </div>
+
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="spinner"></div>
+        <p style="font-weight: bold; color: #222;">Convirtiendo documento...</p>
+    </div>
+
+    <script>
+        const dropZone = document.getElementById('dropZone');
+        const dropdownMenu = document.getElementById('dropdownMenu');
+        const viewStart = document.getElementById('viewStart');
+        const viewResult = document.getElementById('viewResult');
+        const loadingOverlay = document.getElementById('loadingOverlay');
+        
+        let currentBlobUrl = null;
+        let currentFileName = "";
+
+        function toggleDropdown(e) { e.stopPropagation(); dropdownMenu.classList.toggle('show'); }
+        document.addEventListener('click', () => dropdownMenu.classList.remove('show'));
+        function triggerBrowse() { document.getElementById('fileInput').click(); }
+
+        dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('dragover'); });
+        dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('dragover');
+            if(e.dataTransfer.files.length > 0) handleFile(e.dataTransfer.files[0]);
+        });
+
+        function handleFile(file) {
+            if (!file.name.endsWith('.docx') && !file.name.endsWith('.doc')) {
+                alert("Por favor sube un archivo válido de Word (.doc o .docx)");
+                return;
+            }
+
+            loadingOverlay.classList.add('active');
+            
+            let formData = new FormData();
+            formData.append('file', file);
+
+            fetch('/upload', { method: 'POST', body: formData })
+            .then(response => {
+                if(!response.ok) throw new Error('Error al procesar el archivo.');
+                return response.blob();
+            })
+            .then(blob => {
+                loadingOverlay.classList.remove('active');
+                
+                let baseName = file.name.substring(0, file.name.lastIndexOf('.')) || file.name;
+                currentFileName = baseName + '.pdf';
+                currentBlobUrl = window.URL.createObjectURL(blob);
+                
+                document.getElementById('pdfFileNameLabel').innerText = currentFileName + " - 1 páginas";
+                
+                // Actualiza dinámicamente el título principal de la hoja con el nombre de tu archivo
+                if(baseName.length > 45) {
+                    document.getElementById('mockTitleText').innerText = baseName.substring(0, 45).toUpperCase() + "...";
+                } else {
+                    document.getElementById('mockTitleText').innerText = baseName.toUpperCase();
+                }
+
+                viewStart.style.display = 'none';
+                viewResult.classList.add('active');
+            })
+            .catch(error => {
+                loadingOverlay.classList.remove('active');
+                alert("Hubo un error en la conversión de tu archivo.");
+                console.error(error);
+            });
+        }
+
+        document.getElementById('btnDownloadActual').addEventListener('click', () => {
+            if (currentBlobUrl) {
+                let a = document.createElement('a');
+                a.href = currentBlobUrl;
+                a.download = currentFileName;
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+            }
+        });
+
+        function resetConverter() {
+            currentBlobUrl = null;
+            document.getElementById('fileInput').value = "";
+            viewResult.classList.remove('active');
+            viewStart.style.display = 'flex';
+        }
+    </script>
+</body>
+</html>
