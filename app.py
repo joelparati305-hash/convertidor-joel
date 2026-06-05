@@ -5,7 +5,7 @@ from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
 
-# Usamos la carpeta tmp que es donde Render nos deja escribir sin problemas
+# Usamos la carpeta /tmp porque Render nos da permisos de escritura completos allí
 OUTPUT_FOLDER = '/tmp/converted'
 os.makedirs(OUTPUT_FOLDER, exist_ok=True)
 
@@ -23,7 +23,6 @@ def upload_file():
         return jsonify({'error': 'Nombre de archivo vacío'}), 400
 
     if file and (file.filename.endswith('.docx') or file.filename.endswith('.doc')):
-        # Guardamos el nombre seguro del archivo
         filename = secure_filename(file.filename)
         base_name = filename.rsplit('.', 1)[0]
         
@@ -31,34 +30,37 @@ def upload_file():
         file.save(input_word_path)
         
         try:
-            # Comando oficial de LibreOffice para convertir a PDF manteniendo formato e imágenes
-            # Usamos '/tmp' para guardar el PDF para evitar problemas de permisos
-            cmd = f"libreoffice --headless --convert-to pdf --outdir {OUTPUT_FOLDER} {input_word_path}"
+            # Forzamos al sistema a usar /tmp como su directorio HOME para saltar el bloqueo de Render
+            env = os.environ.copy()
+            env['HOME'] = '/tmp'
             
-            # Ejecutamos el comando en el sistema
-            subprocess.run(cmd, shell=True, check=True)
+            output_pdf_path = os.path.join(OUTPUT_FOLDER, base_name + '.pdf')
             
-            pdf_filename = base_name + '.pdf'
-            output_pdf_path = os.path.join(OUTPUT_FOLDER, pdf_filename)
+            # Comando con el candado definitivo de entorno aislado (-env:UserInstallation)
+            cmd = [
+                "libreoffice",
+                "--headless",
+                "-env:UserInstallation=file:///tmp/LibreOffice_Conversion",
+                "--convert-to", "pdf",
+                "--outdir", OUTPUT_FOLDER,
+                input_word_path
+            ]
             
-            # Limpiamos el Word original para no ocupar espacio innecesario
+            # Ejecutamos con el entorno corregido
+            subprocess.run(cmd, check=True, env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            
             if os.path.exists(input_word_path):
                 os.remove(input_word_path)
                 
-            return send_file(output_pdf_path, as_attachment=True, download_name=pdf_filename)
+            return send_file(output_pdf_path, mimetype='application/pdf')
             
-        except subprocess.CalledProcessError as e:
-            if os.path.exists(input_word_path):
-                os.remove(input_word_path)
-            return jsonify({'error': 'Error interno al convertir con el sistema: ' + str(e)}), 500
         except Exception as e:
             if os.path.exists(input_word_path):
                 os.remove(input_word_path)
-            return jsonify({'error': 'Error al procesar el archivo: ' + str(e)}), 500
+            return jsonify({'error': f'Error en el motor de conversión: {str(e)}'}), 500
             
     return jsonify({'error': 'Formato no permitido'}), 400
 
 if __name__ == '__main__':
-    # Usamos el puerto por defecto de Render para que no haya que configurarlo
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port)
