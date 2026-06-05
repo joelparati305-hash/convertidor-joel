@@ -42,34 +42,30 @@
         .view-result { display: none; flex: 1; width: 100%; height: 100%; }
         .view-result.active { display: flex; }
         
-        /* Zona Central - Fondo Gris Claro de Smallpdf */
         .preview-area { flex: 1; background-color: #e6e6e9; display: flex; justify-content: center; align-items: center; padding: 40px; overflow-y: auto; }
         .pdf-document-mock { background: white; width: 100%; max-width: 520px; height: 720px; box-shadow: 0 4px 25px rgba(0,0,0,0.1); padding: 40px; display: block; text-align: left; font-size: 13px; line-height: 1.6; overflow: hidden; }
 
-        /* Barra Lateral Derecha Estilizada */
+        /* Barra Lateral Derecha */
         .sidebar-right { width: 350px; background-color: #ffffff; border-left: 1px solid #e4e4e7; display: flex; flex-direction: column; padding: 24px; box-shadow: -2px 0 10px rgba(0,0,0,0.02); }
         .status-header { display: flex; align-items: center; gap: 8px; font-size: 18px; font-weight: bold; color: #22c55e; margin-bottom: 6px; }
         .file-info-name { font-size: 13px; color: #71717a; margin-bottom: 24px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         
-        /* Botón de Descargar Azul Fuerte */
+        /* Botón Descargar */
         .btn-download-container { display: flex; margin-bottom: 12px; width: 100%; }
         .btn-download-main { background-color: #1e40af; color: white; flex: 1; padding: 16px; font-size: 15px; font-weight: bold; border: none; border-radius: 6px 0 0 6px; cursor: pointer; transition: background 0.2s; text-align: center; }
         .btn-download-main:hover { background-color: #1d4ed8; }
         .btn-download-arrow { background-color: #1e40af; border-left: 1px solid rgba(255,255,255,0.2); padding: 16px 14px; border-top: none; border-bottom: none; border-right: none; border-radius: 0 6px 6px 0; cursor: pointer; color: white; display: flex; align-items: center; }
         
-        .btn-export { background-color: transparent; border: 1px solid #e4e4e7; color: #3f3f46; padding: 14px; font-size: 14px; font-weight: 500; border-radius: 6px; width: 100%; cursor: pointer; margin-bottom: 30px; text-align: center; }
+        /* Botón Contenedor Exportar Avanzado */
+        .export-container { position: relative; width: 100%; margin-bottom: 30px; }
+        .btn-export { background-color: transparent; border: 1px solid #e4e4e7; color: #3f3f46; padding: 14px; font-size: 14px; font-weight: 500; border-radius: 6px; width: 100%; cursor: pointer; text-align: center; }
         .btn-export:hover { background-color: #f4f4f5; }
-
-        /* Sección de herramientas inferiores "Continuar en" */
-        .tools-section-title { font-size: 11px; font-weight: bold; color: #71717a; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 12px; text-align: left; }
-        .tool-item { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px; border: 1px solid #f4f4f5; border-radius: 8px; cursor: pointer; transition: background 0.2s; font-size: 14px; color: #18181b; margin-bottom: 8px; background-color: #fafafa; }
-        .tool-item:hover { background-color: #f4f4f5; border-color: #e4e4e7; }
-        .tool-left { display: flex; align-items: center; gap: 12px; }
-        .tool-icon { width: 20px; height: 20px; border-radius: 4px; display: inline-block; }
-        .icon-compress { background-color: #ef4444; }
-        .icon-merge { background-color: #3b82f6; }
-        .icon-edit { background-color: #f59e0b; }
-        .arrow-right { color: #a1a1aa; font-weight: bold; }
+        
+        /* Menú desplegable para Exportar */
+        .export-menu { position: absolute; top: 100%; left: 0; width: 100%; background: white; border: 1px solid #e4e4e7; border-radius: 6px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); display: none; z-index: 20; margin-top: 4px; }
+        .export-menu.show { display: block; }
+        .export-item { padding: 12px 16px; color: #3f3f46; font-size: 14px; cursor: pointer; display: flex; align-items: center; gap: 8px; }
+        .export-item:hover { background-color: #f4f4f5; color: #18181b; }
         
         .btn-restart { margin-top: auto; background: none; border: none; color: #71717a; font-size: 14px; cursor: pointer; text-decoration: none; text-align: center; padding: 10px; }
         .btn-restart:hover { color: #18181b; text-decoration: underline; }
@@ -93,8 +89,6 @@
                 </button>
                 <div class="dropdown-menu" id="dropdownMenu">
                     <div class="dropdown-item" onclick="triggerBrowse()">Desde dispositivo</div>
-                    <div class="dropdown-item">Desde Google Drive</div>
-                    <div class="dropdown-item">Desde Dropbox</div>
                 </div>
             </div>
             <p class="info-text">o arrastra y suelta los archivos Word aquí</p>
@@ -106,15 +100,10 @@
         <div class="preview-area">
             <div class="pdf-document-mock">
                 <p style="font-weight: bold; font-size: 14px; margin-bottom: 15px; color: #111827;" id="mockTitleText">SEGUIR EL ORDEN DE LA INSTALACIÓN QUE SE MENCIONÓ EN CLASE</p>
-                
                 <p style="margin-bottom: 10px;"><a href="#" style="color: #2563eb; text-decoration: underline;">SketchUp Plugins | PluginStore | JHS PowerBar</a></p>
-                
                 <p style="margin-bottom: 8px;"><a href="#" style="color: #2563eb; text-decoration: underline;">https://sketchucation.com/pluginstore?pln=V-Ray_for_SketchUp</a></p>
-                
                 <p style="margin-bottom: 8px;"><a href="#" style="color: #2563eb; text-decoration: underline;">https://sketchucation.com/pluginstore?pln=Curviloft</a></p>
-                
                 <p style="margin-bottom: 8px;"><a href="#" style="color: #2563eb; text-decoration: underline;">https://sketchucation.com/pluginstore?pln=JointPushPull</a></p>
-                
                 <p style="margin-bottom: 8px;"><a href="#" style="color: #2563eb; text-decoration: underline;">https://sketchucation.com/pluginstore?pln=FredoTools</a></p>
             </div>
         </div>
@@ -132,30 +121,13 @@
                 </button>
             </div>
 
-            <button class="btn-export">Exportar como ▾</button>
-
-            <div class="tools-section-title">Continuar en</div>
-            
-            <div class="tool-item">
-                <div class="tool-left">
-                    <div class="tool-icon icon-compress"></div>
-                    <span style="font-weight: 500;">Comprimir</span>
+            <div class="export-container">
+                <button class="btn-export" id="btnExportToggle">Exportar como ▾</button>
+                <div class="export-menu" id="exportMenu">
+                    <div class="export-item" onclick="exportToFormat('jpg')">
+                        <span style="color: #f59e0b; font-weight: bold;">🖼</span> Imagen (.jpg)
+                    </div>
                 </div>
-                <span class="arrow-right">›</span>
-            </div>
-            <div class="tool-item">
-                <div class="tool-left">
-                    <div class="tool-icon icon-merge"></div>
-                    <span style="font-weight: 500;">Combinar</span>
-                </div>
-                <span class="arrow-right">›</span>
-            </div>
-            <div class="tool-item">
-                <div class="tool-left">
-                    <div class="tool-icon icon-edit"></div>
-                    <span style="font-weight: 500;">Editar</span>
-                </div>
-                <span class="arrow-right">›</span>
             </div>
 
             <button class="btn-restart" onclick="resetConverter()">⟲ Volver a empezar</button>
@@ -164,21 +136,36 @@
 
     <div class="loading-overlay" id="loadingOverlay">
         <div class="spinner"></div>
-        <p style="font-weight: bold; color: #222;">Convirtiendo documento...</p>
+        <p style="font-weight: bold; color: #222;" id="loadingText">Convirtiendo documento...</p>
     </div>
 
     <script>
         const dropZone = document.getElementById('dropZone');
         const dropdownMenu = document.getElementById('dropdownMenu');
+        const exportMenu = document.getElementById('exportMenu');
         const viewStart = document.getElementById('viewStart');
         const viewResult = document.getElementById('viewResult');
         const loadingOverlay = document.getElementById('loadingOverlay');
+        const loadingText = document.getElementById('loadingText');
         
         let currentBlobUrl = null;
         let currentFileName = "";
+        let originalFileUploaded = null; // Guardamos el archivo original para re-enviarlo si exportan
 
         function toggleDropdown(e) { e.stopPropagation(); dropdownMenu.classList.toggle('show'); }
-        document.addEventListener('click', () => dropdownMenu.classList.remove('show'));
+        
+        // Manejo del clic en el botón Exportar como
+        document.getElementById('btnExportToggle').addEventListener('click', (e) => {
+            e.stopPropagation();
+            exportMenu.classList.toggle('show');
+        });
+
+        // Cerrar menús al hacer clic fuera
+        document.addEventListener('click', () => {
+            dropdownMenu.classList.remove('show');
+            exportMenu.classList.remove('show');
+        });
+
         function triggerBrowse() { document.getElementById('fileInput').click(); }
 
         dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('dragover'); });
@@ -195,10 +182,13 @@
                 return;
             }
 
+            originalFileUploaded = file;
+            loadingText.innerText = "Convirtiendo documento...";
             loadingOverlay.classList.add('active');
             
             let formData = new FormData();
             formData.append('file', file);
+            formData.append('format', 'pdf'); // Por defecto pedimos PDF
 
             fetch('/upload', { method: 'POST', body: formData })
             .then(response => {
@@ -210,11 +200,11 @@
                 
                 let baseName = file.name.substring(0, file.name.lastIndexOf('.')) || file.name;
                 currentFileName = baseName + '.pdf';
+                if (currentBlobUrl) window.URL.revokeObjectURL(currentBlobUrl);
                 currentBlobUrl = window.URL.createObjectURL(blob);
                 
                 document.getElementById('pdfFileNameLabel').innerText = currentFileName + " - 1 páginas";
                 
-                // Actualiza dinámicamente el título principal de la hoja con el nombre de tu archivo
                 if(baseName.length > 45) {
                     document.getElementById('mockTitleText').innerText = baseName.substring(0, 45).toUpperCase() + "...";
                 } else {
@@ -231,6 +221,47 @@
             });
         }
 
+        // Nueva función encargada de exportar al formato JPG
+        function exportToFormat(targetFormat) {
+            if (!originalFileUploaded) return;
+            
+            exportMenu.classList.remove('show');
+            loadingText.innerText = "Generando imagen JPG...";
+            loadingOverlay.classList.add('active');
+
+            let formData = new FormData();
+            formData.append('file', originalFileUploaded);
+            formData.append('format', targetFormat); // Enviamos 'jpg'
+
+            fetch('/upload', { method: 'POST', body: formData })
+            .then(response => {
+                if(!response.ok) throw new Error('Error al exportar.');
+                return response.blob();
+            })
+            .then(blob => {
+                loadingOverlay.classList.remove('active');
+                
+                let baseName = originalFileUploaded.name.substring(0, originalFileUploaded.name.lastIndexOf('.')) || originalFileUploaded.name;
+                let exportFileName = baseName + '.' + targetFormat;
+                let exportBlobUrl = window.URL.createObjectURL(blob);
+                
+                // Disparamos la descarga inmediata del archivo JPG creado
+                let a = document.createElement('a');
+                a.href = exportBlobUrl;
+                a.download = exportFileName;
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                
+                setTimeout(() => window.URL.revokeObjectURL(exportBlobUrl), 100);
+            })
+            .catch(error => {
+                loadingOverlay.classList.remove('active');
+                alert("Hubo un error al exportar como imagen.");
+                console.error(error);
+            });
+        }
+
         document.getElementById('btnDownloadActual').addEventListener('click', () => {
             if (currentBlobUrl) {
                 let a = document.createElement('a');
@@ -243,7 +274,9 @@
         });
 
         function resetConverter() {
+            if (currentBlobUrl) window.URL.revokeObjectURL(currentBlobUrl);
             currentBlobUrl = null;
+            originalFileUploaded = null;
             document.getElementById('fileInput').value = "";
             viewResult.classList.remove('active');
             viewStart.style.display = 'flex';
