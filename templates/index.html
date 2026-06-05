@@ -43,7 +43,10 @@
         .view-result.active { display: flex; }
         
         .preview-area { flex: 1; background-color: #e6e6e9; display: flex; justify-content: center; align-items: center; padding: 40px; overflow-y: auto; }
-        .pdf-document-mock { background: white; width: 100%; max-width: 520px; height: 720px; box-shadow: 0 4px 25px rgba(0,0,0,0.1); padding: 40px; display: block; text-align: left; font-size: 13px; line-height: 1.6; overflow: hidden; }
+        
+        /* Contenedor de la imagen real */
+        .preview-image-container { background: white; box-shadow: 0 4px 25px rgba(0,0,0,0.1); max-width: 520px; width: 100%; display: flex; justify-content: center; align-items: center; }
+        .preview-image-container img { width: 100%; height: auto; display: block; }
 
         /* Barra Lateral Derecha */
         .sidebar-right { width: 350px; background-color: #ffffff; border-left: 1px solid #e4e4e7; display: flex; flex-direction: column; padding: 24px; box-shadow: -2px 0 10px rgba(0,0,0,0.02); }
@@ -98,13 +101,8 @@
 
     <div class="view-result" id="viewResult">
         <div class="preview-area">
-            <div class="pdf-document-mock">
-                <p style="font-weight: bold; font-size: 14px; margin-bottom: 15px; color: #111827;" id="mockTitleText">SEGUIR EL ORDEN DE LA INSTALACIÓN QUE SE MENCIONÓ EN CLASE</p>
-                <p style="margin-bottom: 10px;"><a href="#" style="color: #2563eb; text-decoration: underline;">SketchUp Plugins | PluginStore | JHS PowerBar</a></p>
-                <p style="margin-bottom: 8px;"><a href="#" style="color: #2563eb; text-decoration: underline;">https://sketchucation.com/pluginstore?pln=V-Ray_for_SketchUp</a></p>
-                <p style="margin-bottom: 8px;"><a href="#" style="color: #2563eb; text-decoration: underline;">https://sketchucation.com/pluginstore?pln=Curviloft</a></p>
-                <p style="margin-bottom: 8px;"><a href="#" style="color: #2563eb; text-decoration: underline;">https://sketchucation.com/pluginstore?pln=JointPushPull</a></p>
-                <p style="margin-bottom: 8px;"><a href="#" style="color: #2563eb; text-decoration: underline;">https://sketchucation.com/pluginstore?pln=FredoTools</a></p>
+            <div class="preview-image-container">
+                <img id="pdfPreviewImage" src="" alt="Vista previa del documento">
             </div>
         </div>
 
@@ -147,20 +145,20 @@
         const viewResult = document.getElementById('viewResult');
         const loadingOverlay = document.getElementById('loadingOverlay');
         const loadingText = document.getElementById('loadingText');
+        const pdfPreviewImage = document.getElementById('pdfPreviewImage');
         
         let currentBlobUrl = null;
+        let currentPreviewUrl = null;
         let currentFileName = "";
-        let originalFileUploaded = null; // Guardamos el archivo original para re-enviarlo si exportan
+        let originalFileUploaded = null;
 
         function toggleDropdown(e) { e.stopPropagation(); dropdownMenu.classList.toggle('show'); }
         
-        // Manejo del clic en el botón Exportar como
         document.getElementById('btnExportToggle').addEventListener('click', (e) => {
             e.stopPropagation();
             exportMenu.classList.toggle('show');
         });
 
-        // Cerrar menús al hacer clic fuera
         document.addEventListener('click', () => {
             dropdownMenu.classList.remove('show');
             exportMenu.classList.remove('show');
@@ -186,30 +184,43 @@
             loadingText.innerText = "Convirtiendo documento...";
             loadingOverlay.classList.add('active');
             
+            // Petición 1: Obtenemos el archivo PDF clásico para la descarga
             let formData = new FormData();
             formData.append('file', file);
-            formData.append('format', 'pdf'); // Por defecto pedimos PDF
+            formData.append('format', 'pdf');
 
             fetch('/upload', { method: 'POST', body: formData })
             .then(response => {
                 if(!response.ok) throw new Error('Error al procesar el archivo.');
                 return response.blob();
             })
-            .then(blob => {
-                loadingOverlay.classList.remove('active');
-                
+            .then(pdfBlob => {
                 let baseName = file.name.substring(0, file.name.lastIndexOf('.')) || file.name;
                 currentFileName = baseName + '.pdf';
                 if (currentBlobUrl) window.URL.revokeObjectURL(currentBlobUrl);
-                currentBlobUrl = window.URL.createObjectURL(blob);
+                currentBlobUrl = window.URL.createObjectURL(pdfBlob);
                 
                 document.getElementById('pdfFileNameLabel').innerText = currentFileName + " - 1 páginas";
+
+                // Petición 2: Pedimos al backend la versión JPG real para meterla en la vista previa
+                let previewData = new FormData();
+                previewData.append('file', file);
+                previewData.append('format', 'jpg');
+
+                return fetch('/upload', { method: 'POST', body: previewData });
+            })
+            .then(response => {
+                if(!response.ok) throw new Error('Error al generar la vista previa.');
+                return response.blob();
+            })
+            .then(imageBlob => {
+                loadingOverlay.classList.remove('active');
                 
-                if(baseName.length > 45) {
-                    document.getElementById('mockTitleText').innerText = baseName.substring(0, 45).toUpperCase() + "...";
-                } else {
-                    document.getElementById('mockTitleText').innerText = baseName.toUpperCase();
-                }
+                if (currentPreviewUrl) window.URL.revokeObjectURL(currentPreviewUrl);
+                currentPreviewUrl = window.URL.createObjectURL(imageBlob);
+                
+                // Inyectamos la foto real en la vista previa
+                pdfPreviewImage.src = currentPreviewUrl;
 
                 viewStart.style.display = 'none';
                 viewResult.classList.add('active');
@@ -221,7 +232,6 @@
             });
         }
 
-        // Nueva función encargada de exportar al formato JPG
         function exportToFormat(targetFormat) {
             if (!originalFileUploaded) return;
             
@@ -231,7 +241,7 @@
 
             let formData = new FormData();
             formData.append('file', originalFileUploaded);
-            formData.append('format', targetFormat); // Enviamos 'jpg'
+            formData.append('format', targetFormat);
 
             fetch('/upload', { method: 'POST', body: formData })
             .then(response => {
@@ -245,7 +255,6 @@
                 let exportFileName = baseName + '.' + targetFormat;
                 let exportBlobUrl = window.URL.createObjectURL(blob);
                 
-                // Disparamos la descarga inmediata del archivo JPG creado
                 let a = document.createElement('a');
                 a.href = exportBlobUrl;
                 a.download = exportFileName;
@@ -275,8 +284,11 @@
 
         function resetConverter() {
             if (currentBlobUrl) window.URL.revokeObjectURL(currentBlobUrl);
+            if (currentPreviewUrl) window.URL.revokeObjectURL(currentPreviewUrl);
             currentBlobUrl = null;
+            currentPreviewUrl = null;
             originalFileUploaded = null;
+            pdfPreviewImage.src = "";
             document.getElementById('fileInput').value = "";
             viewResult.classList.remove('active');
             viewStart.style.display = 'flex';
