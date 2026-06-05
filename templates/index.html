@@ -42,11 +42,11 @@
         .view-result { display: none; flex: 1; width: 100%; height: 100%; }
         .view-result.active { display: flex; }
         
-        .preview-area { flex: 1; background-color: #e6e6e9; display: flex; justify-content: center; align-items: center; padding: 40px; overflow-y: auto; }
+        .preview-area { flex: 1; background-color: #e6e6e9; display: flex; justify-content: center; align-items: center; padding: 20px; }
         
-        /* Contenedor de la imagen real */
-        .preview-image-container { background: white; box-shadow: 0 4px 25px rgba(0,0,0,0.1); max-width: 520px; width: 100%; display: flex; justify-content: center; align-items: center; }
-        .preview-image-container img { width: 100%; height: auto; display: block; }
+        /* Contenedor del Visor PDF Real Nativo */
+        .preview-pdf-container { background: white; box-shadow: 0 4px 25px rgba(0,0,0,0.1); width: 100%; max-width: 680px; height: 100%; border-radius: 4px; overflow: hidden; }
+        .preview-pdf-container iframe { width: 100%; height: 100%; border: none; }
 
         /* Barra Lateral Derecha */
         .sidebar-right { width: 350px; background-color: #ffffff; border-left: 1px solid #e4e4e7; display: flex; flex-direction: column; padding: 24px; box-shadow: -2px 0 10px rgba(0,0,0,0.02); }
@@ -54,21 +54,9 @@
         .file-info-name { font-size: 13px; color: #71717a; margin-bottom: 24px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         
         /* Botón Descargar */
-        .btn-download-container { display: flex; margin-bottom: 12px; width: 100%; }
-        .btn-download-main { background-color: #1e40af; color: white; flex: 1; padding: 16px; font-size: 15px; font-weight: bold; border: none; border-radius: 6px 0 0 6px; cursor: pointer; transition: background 0.2s; text-align: center; }
+        .btn-download-container { display: flex; margin-bottom: 30px; width: 100%; }
+        .btn-download-main { background-color: #1e40af; color: white; flex: 1; padding: 16px; font-size: 15px; font-weight: bold; border: none; border-radius: 6px; cursor: pointer; transition: background 0.2s; text-align: center; }
         .btn-download-main:hover { background-color: #1d4ed8; }
-        .btn-download-arrow { background-color: #1e40af; border-left: 1px solid rgba(255,255,255,0.2); padding: 16px 14px; border-top: none; border-bottom: none; border-right: none; border-radius: 0 6px 6px 0; cursor: pointer; color: white; display: flex; align-items: center; }
-        
-        /* Botón Contenedor Exportar Avanzado */
-        .export-container { position: relative; width: 100%; margin-bottom: 30px; }
-        .btn-export { background-color: transparent; border: 1px solid #e4e4e7; color: #3f3f46; padding: 14px; font-size: 14px; font-weight: 500; border-radius: 6px; width: 100%; cursor: pointer; text-align: center; }
-        .btn-export:hover { background-color: #f4f4f5; }
-        
-        /* Menú desplegable para Exportar */
-        .export-menu { position: absolute; top: 100%; left: 0; width: 100%; background: white; border: 1px solid #e4e4e7; border-radius: 6px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); display: none; z-index: 20; margin-top: 4px; }
-        .export-menu.show { display: block; }
-        .export-item { padding: 12px 16px; color: #3f3f46; font-size: 14px; cursor: pointer; display: flex; align-items: center; gap: 8px; }
-        .export-item:hover { background-color: #f4f4f5; color: #18181b; }
         
         .btn-restart { margin-top: auto; background: none; border: none; color: #71717a; font-size: 14px; cursor: pointer; text-decoration: none; text-align: center; padding: 10px; }
         .btn-restart:hover { color: #18181b; text-decoration: underline; }
@@ -101,8 +89,8 @@
 
     <div class="view-result" id="viewResult">
         <div class="preview-area">
-            <div class="preview-image-container">
-                <img id="pdfPreviewImage" src="" alt="Vista previa del documento">
+            <div class="preview-pdf-container">
+                <iframe id="pdfIframeViewer" src=""></iframe>
             </div>
         </div>
 
@@ -113,19 +101,7 @@
             <div class="file-info-name" id="pdfFileNameLabel">nombre_archivo.pdf</div>
 
             <div class="btn-download-container">
-                <button class="btn-download-main" id="btnDownloadActual">Descargar</button>
-                <button class="btn-download-arrow">
-                    <svg width="12" height="12" viewBox="0 0 12 12" fill="white"><path d="M2 4l4 4 4-4z"/></svg>
-                </button>
-            </div>
-
-            <div class="export-container">
-                <button class="btn-export" id="btnExportToggle">Exportar como ▾</button>
-                <div class="export-menu" id="exportMenu">
-                    <div class="export-item" onclick="exportToFormat('jpg')">
-                        <span style="color: #f59e0b; font-weight: bold;">🖼</span> Imagen (.jpg)
-                    </div>
-                </div>
+                <button class="btn-download-main" id="btnDownloadActual">Descargar PDF</button>
             </div>
 
             <button class="btn-restart" onclick="resetConverter()">⟲ Volver a empezar</button>
@@ -134,36 +110,22 @@
 
     <div class="loading-overlay" id="loadingOverlay">
         <div class="spinner"></div>
-        <p style="font-weight: bold; color: #222;" id="loadingText">Convirtiendo documento...</p>
+        <p style="font-weight: bold; color: #222;">Convirtiendo documento de forma exacta...</p>
     </div>
 
     <script>
         const dropZone = document.getElementById('dropZone');
         const dropdownMenu = document.getElementById('dropdownMenu');
-        const exportMenu = document.getElementById('exportMenu');
         const viewStart = document.getElementById('viewStart');
         const viewResult = document.getElementById('viewResult');
         const loadingOverlay = document.getElementById('loadingOverlay');
-        const loadingText = document.getElementById('loadingText');
-        const pdfPreviewImage = document.getElementById('pdfPreviewImage');
+        const pdfIframeViewer = document.getElementById('pdfIframeViewer');
         
         let currentBlobUrl = null;
-        let currentPreviewUrl = null;
         let currentFileName = "";
-        let originalFileUploaded = null;
 
         function toggleDropdown(e) { e.stopPropagation(); dropdownMenu.classList.toggle('show'); }
-        
-        document.getElementById('btnExportToggle').addEventListener('click', (e) => {
-            e.stopPropagation();
-            exportMenu.classList.toggle('show');
-        });
-
-        document.addEventListener('click', () => {
-            dropdownMenu.classList.remove('show');
-            exportMenu.classList.remove('show');
-        });
-
+        document.addEventListener('click', () => dropdownMenu.classList.remove('show'));
         function triggerBrowse() { document.getElementById('fileInput').click(); }
 
         dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('dragover'); });
@@ -180,93 +142,36 @@
                 return;
             }
 
-            originalFileUploaded = file;
-            loadingText.innerText = "Convirtiendo documento...";
             loadingOverlay.classList.add('active');
             
-            // Petición 1: Obtenemos el archivo PDF clásico para la descarga
             let formData = new FormData();
             formData.append('file', file);
-            formData.append('format', 'pdf');
 
             fetch('/upload', { method: 'POST', body: formData })
             .then(response => {
-                if(!response.ok) throw new Error('Error al procesar el archivo.');
+                if(!response.ok) throw new Error('Error al clonar el archivo.');
                 return response.blob();
             })
             .then(pdfBlob => {
+                loadingOverlay.classList.remove('active');
+                
                 let baseName = file.name.substring(0, file.name.lastIndexOf('.')) || file.name;
                 currentFileName = baseName + '.pdf';
+                
                 if (currentBlobUrl) window.URL.revokeObjectURL(currentBlobUrl);
                 currentBlobUrl = window.URL.createObjectURL(pdfBlob);
                 
-                document.getElementById('pdfFileNameLabel').innerText = currentFileName + " - 1 páginas";
-
-                // Petición 2: Pedimos al backend la versión JPG real para meterla en la vista previa
-                let previewData = new FormData();
-                previewData.append('file', file);
-                previewData.append('format', 'jpg');
-
-                return fetch('/upload', { method: 'POST', body: previewData });
-            })
-            .then(response => {
-                if(!response.ok) throw new Error('Error al generar la vista previa.');
-                return response.blob();
-            })
-            .then(imageBlob => {
-                loadingOverlay.classList.remove('active');
+                document.getElementById('pdfFileNameLabel').innerText = currentFileName;
                 
-                if (currentPreviewUrl) window.URL.revokeObjectURL(currentPreviewUrl);
-                currentPreviewUrl = window.URL.createObjectURL(imageBlob);
-                
-                // Inyectamos la foto real en la vista previa
-                pdfPreviewImage.src = currentPreviewUrl;
+                // Cargamos el PDF real directamente en el visor de la pantalla
+                pdfIframeViewer.src = currentBlobUrl;
 
                 viewStart.style.display = 'none';
                 viewResult.classList.add('active');
             })
             .catch(error => {
                 loadingOverlay.classList.remove('active');
-                alert("Hubo un error en la conversión de tu archivo.");
-                console.error(error);
-            });
-        }
-
-        function exportToFormat(targetFormat) {
-            if (!originalFileUploaded) return;
-            
-            exportMenu.classList.remove('show');
-            loadingText.innerText = "Generando imagen JPG...";
-            loadingOverlay.classList.add('active');
-
-            let formData = new FormData();
-            formData.append('file', originalFileUploaded);
-            formData.append('format', targetFormat);
-
-            fetch('/upload', { method: 'POST', body: formData })
-            .then(response => {
-                if(!response.ok) throw new Error('Error al exportar.');
-                return response.blob();
-            })
-            .then(blob => {
-                loadingOverlay.classList.remove('active');
-                
-                let baseName = originalFileUploaded.name.substring(0, originalFileUploaded.name.lastIndexOf('.')) || originalFileUploaded.name;
-                let exportFileName = baseName + '.' + targetFormat;
-                let exportBlobUrl = window.URL.createObjectURL(blob);
-                
-                let a = document.createElement('a');
-                a.href = exportBlobUrl;
-                a.download = exportFileName;
-                document.body.appendChild(a);
-                a.click();
-                a.remove();
-                
-                setTimeout(() => window.URL.revokeObjectURL(exportBlobUrl), 100);
-            })
-            .catch(error => {
-                loadingOverlay.classList.remove('active');
-                alert("Hubo un error al exportar como imagen.");
+                alert("Hubo un error al procesar el archivo de Word.");
                 console.error(error);
             });
         }
@@ -284,11 +189,8 @@
 
         function resetConverter() {
             if (currentBlobUrl) window.URL.revokeObjectURL(currentBlobUrl);
-            if (currentPreviewUrl) window.URL.revokeObjectURL(currentPreviewUrl);
             currentBlobUrl = null;
-            currentPreviewUrl = null;
-            originalFileUploaded = null;
-            pdfPreviewImage.src = "";
+            pdfIframeViewer.src = "";
             document.getElementById('fileInput').value = "";
             viewResult.classList.remove('active');
             viewStart.style.display = 'flex';
