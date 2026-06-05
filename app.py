@@ -29,24 +29,34 @@ def upload_file():
         file.save(input_word_path)
         
         try:
-            # LibreOffice clona el Word manteniendo el formato, imágenes, links y diseño intactos
-            cmd = f"libreoffice --headless --convert-to pdf --outdir {OUTPUT_FOLDER} {input_word_path}"
-            subprocess.run(cmd, shell=True, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            # Forzamos a LibreOffice a usar rutas locales amigables para evitar bloqueos en Render
+            home_dir = os.getcwd()
+            env = os.environ.copy()
+            env['HOME'] = home_dir
             
-            pdf_filename = base_name + '.pdf'
-            output_pdf_path = os.path.join(OUTPUT_FOLDER, pdf_filename)
+            output_pdf_path = os.path.join(OUTPUT_FOLDER, base_name + '.pdf')
             
-            # Limpiamos el Word de inmediato para dejar solo el PDF listo
+            # Comando ultra seguro con rutas absolutas
+            cmd = [
+                "libreoffice",
+                "--headless",
+                "-env:UserInstallation=file://" + os.path.join(home_dir, OUTPUT_FOLDER, ".config"),
+                "--convert-to", "pdf",
+                "--outdir", os.path.abspath(OUTPUT_FOLDER),
+                os.path.abspath(input_word_path)
+            ]
+            
+            subprocess.run(cmd, check=True, env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            
             if os.path.exists(input_word_path):
                 os.remove(input_word_path)
                 
-            # Enviamos el PDF real (servirá tanto para descargarlo como para verlo en pantalla)
-            return send_file(output_pdf_path, as_attachment=False, download_name=pdf_filename, mimetype='application/pdf')
+            return send_file(os.path.abspath(output_pdf_path), mimetype='application/pdf')
             
         except Exception as e:
             if os.path.exists(input_word_path):
                 os.remove(input_word_path)
-            return jsonify({'error': 'Error en la conversión del sistema: ' + str(e)}), 500
+            return jsonify({'error': str(e)}), 500
             
     return jsonify({'error': 'Formato no permitido'}), 400
 
